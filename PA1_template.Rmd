@@ -11,7 +11,7 @@ output:
 unzip('activity.zip')
 data <- read.csv('activity.csv')
 data$interval <- formatC(as.integer(data$interval), width="4", flag="0")
-data$time <- strptime(paste(data$date, data$interval), format="%Y-%m-%d %H%M")
+data$time <- as.POSIXct(strptime(paste(data$date, data$interval), format="%Y-%m-%d %H%M"))
 data <- data[,!(names(data) %in% c('date', 'interval'))]
 data[4145:4150,]
 ```
@@ -46,7 +46,61 @@ names(steps_per_int)[steps_per_int == max(steps_per_int)]
 
 
 ## Imputing missing values
+```{r}
+nas <- sum(is.na(data$steps))
+nas
+nas / length(data$steps)
+```
 
+Fill in NA values with the mean of that interval across all days as I feel that there would be greater variance in the number of steps at different times over different days.
+```{r}
+head(data)
+
+ints <- as.character(data$time, format="%H%M")
+is_na <- is.na(data$steps)
+for (i in unique(ints)) {
+  this_int <- ints == i
+  if (sum(this_int & !is_na) > 0) {
+    m <- as.integer(mean(data$steps[this_int], na.rm=TRUE))
+    data$steps[this_int & is_na] <- m
+  }
+}
+
+head(data)
+```
+Check that all `NA` have been removed.
+```{r}
+sum(is.na(data$steps))
+```
+
+```{r}
+steps_per_day_imp <- tapply(data$steps,
+                        as.character(data$time, format="%Y-%m-%d"),
+                        sum, na.rm=TRUE)
+
+hist(steps_per_day_imp)
+
+mean(steps_per_day_imp)
+median(steps_per_day_imp)
+```
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+```{r}
+library(lattice)
+library(dplyr)
+
+weekend <- weekdays(data$time) %in% c("Saturday", "Sunday")
+data$weekday <- !weekend
+data$weekday[weekend] <- 'weekend'
+data$weekday[!weekend] <- 'weekday'
+
+by_we <- (data %>%
+          group_by(time=as.character(time, format="%H%M"), weekday) %>%
+          summarise(steps=mean(steps))
+         )
+
+xyplot(steps ~ as.integer(time) | weekday, data=by_we, type='l')
+
+```
+
