@@ -7,14 +7,41 @@ output:
 
 
 ## Loading and preprocessing the data
-
+```{r}
+unzip('activity.zip')
+data <- read.csv('activity.csv')
+data$interval <- formatC(as.integer(data$interval), width="4", flag="0")
+data$time <- strptime(paste(data$date, data$interval), format="%Y-%m-%d %H%M")
+data <- data[,!(names(data) %in% c('date', 'interval'))]
+data[4145:4150,]
+```
 
 
 ## What is mean total number of steps taken per day?
-
+```{r}
+steps_per_day <- tapply(data$steps,
+                        as.character(data$time, format="%Y-%m-%d"),
+                        sum, na.rm=TRUE)
+```
+```{r}
+hist(steps_per_day)
+```
+```{r}
+mean(steps_per_day)
+median(steps_per_day)
+```
 
 
 ## What is the average daily activity pattern?
+```{r}
+steps_per_int <- tapply(data$steps,
+                        as.character(data$time, format="%H%M"),
+                        mean, na.rm=TRUE)
+plot(as.integer(names(steps_per_int)), steps_per_int, type='l')
+```
+```{r}
+names(steps_per_int)[steps_per_int == max(steps_per_int)]
+```
 
 
 
